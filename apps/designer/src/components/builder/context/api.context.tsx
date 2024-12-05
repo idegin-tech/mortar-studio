@@ -1,24 +1,18 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import {createContext, useContext, useState, ReactNode, useEffect} from 'react';
 import axios from 'axios';
-import { MortarComponent } from '@repo/common/schema/component'
-import { MortarElementInstance } from '@repo/common/schema/instance'
-import { MortarVariable, MortarVariableSet } from '@repo/common/schema/variables'
-import { MortarStyle } from '@repo/common/schema/styles'
-import { MortarPage } from '@repo/common/schema/page'
+import {APISyncData} from '@repo/common/schema/api'
+import {LOCAL_API_URL} from "@/components/builder/config/api.config.ts";
+import {usePreviewContext} from "@/components/builder/context/preview.context.tsx";
 
-interface APIContextProps {
+interface APIConfigState {
     isLoading: boolean;
-    sendSync: (url: string, data: APISyncData) => Promise<APISyncData>;
-    getSync: (url: string) => Promise<APISyncData>;
+    lastSync: number;
+    lastUpdate: number;
 }
 
-export interface APISyncData {
-    components: MortarComponent[];
-    instances: MortarElementInstance[];
-    variableSets: MortarVariableSet[];
-    variables: MortarVariable[];
-    styles: MortarStyle[];
-    pages: MortarPage[];
+interface APIContextProps {
+    state: APIConfigState;
+    getSync: (url: string) => Promise<APISyncData>;
 }
 
 const APIContext = createContext<APIContextProps | undefined>(undefined);
@@ -31,37 +25,53 @@ export const useAPIContext = () => {
     return context;
 };
 
-export const APIProvider = ({ children }: { children: ReactNode }) => {
-    const [isLoading, setIsLoading] = useState(false);
+export const APIProvider = ({children}: { children: ReactNode }) => {
+    const [state, setState] = useState({
+        isLoading: true,
+        lastSync: 0,
+        lastUpdate: 0
+    })
+    const {
+        setPreviewState
+    } = usePreviewContext();
 
-    const sendSync = async (url: string, data: APISyncData) => {
-        setIsLoading(true);
-        try {
-            const response = await axios.post(url, data);
-            return response.data;
-        } catch (error) {
-            console.error('Error in sendSync:', error);
-            throw error;
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const setAPIContextState = (newSate: Partial<APIConfigState>) => {
 
-    const getSync = async (url: string) => {
-        setIsLoading(true);
+        setState((prevState: APIConfigState) => ({
+            ...prevState,
+            ...newSate
+        }));
+    }
+
+
+    const getSync = async () => {
+        setAPIContextState({isLoading: true});
         try {
-            const response = await axios.get(url);
+            const response = await axios.get(`${LOCAL_API_URL}/sync`);
+            setPreviewState({
+                variableSets: response.data.variableSets,
+                variables: response.data.variables,
+                components: response.data.components,
+                pages: response.data.pages
+            })
             return response.data;
         } catch (error) {
             console.error('Error in getSync:', error);
             throw error;
         } finally {
-            setIsLoading(false);
+            setAPIContextState({isLoading: false});
         }
     };
 
+    useEffect(() => {
+        window.addEventListener('storage', () => {
+            setAPIContextState({lastUpdate: Date.now()});
+        });
+        getSync();
+    }, []);
+
     return (
-        <APIContext.Provider value={{ isLoading, sendSync, getSync }}>
+        <APIContext.Provider value={{state, getSync}}>
             {children}
         </APIContext.Provider>
     );
