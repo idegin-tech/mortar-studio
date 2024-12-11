@@ -10,37 +10,66 @@ import {
     ArrowRight,
     CaseSensitive, Copy,
     PaintBucket,
-    Plus
+    Plus,
+    Trash
 } from "lucide-react";
 import ToolBarAddOptions
     from "@/components/builder/designer/components/DesignerToolBar/ToolBarAddOptions.tsx";
-
+import {useElement} from "@/components/builder/hooks/element.hook.tsx";
+import {usePreviewContext} from "@/components/builder/context/preview.context.tsx";
+import ToolbarCopyOptions
+    from "@/components/builder/designer/components/DesignerToolBar/ToolbarCopyOptions.tsx";
 
 export default function DesignerToolBar() {
+    const { deleteElement, incrementElementIndex, decrementElementIndex } = useElement();
+    const { state: { activeElements } } = usePreviewContext();
+    const isParent = !activeElements[0]?.parent_element_id;
+
+    const handleDelete = () => {
+        if (activeElements.length > 0 && activeElements[0]?.parent_element_id) {
+            deleteElement();
+        }
+    };
+
+    if(!activeElements[0]) return null;
+
     return (
         <Draggable>
             <div
                 className={'p-[30px] left-1/2 transform -translate-x-1/2 cursor-move fixed bottom-default group transition-opacity duration-300'}>
                 <div
                     className={
-                        "flex gap-sm z-50 bg-card shadow-xl border rounded-lg p-sm   "
+                        "flex gap-sm z-50 bg-card shadow-xl border rounded-lg p-sm"
                     }
                 >
-                    <EachTool tooltip={"Move left"}>
-                        <ArrowLeft/>
-                    </EachTool>
-                    <EachTool tooltip={"Move right"}>
-                        <ArrowRight/>
-                    </EachTool>
+                    {
+                        !isParent && <>
+                            <EachTool tooltip={"Move left"} onClick={decrementElementIndex}>
+                                <ArrowLeft/>
+                            </EachTool>
+                            <EachTool tooltip={"Move right"} onClick={incrementElementIndex}>
+                                <ArrowRight/>
+                            </EachTool>
+                        </>
+                    }
                     <EachTool tooltip={"Background color"}>
                         <PaintBucket/>
                     </EachTool>
-                    <EachTool tooltip={"Text color"}>
-                        <CaseSensitive/>
-                    </EachTool>
-                    <EachTool tooltip={"Duplicate"}>
-                        <Copy/>
-                    </EachTool>
+                    <ToolbarCopyOptions>
+                        <EachTool tooltip={"Make copies"}>
+                            <Copy/>
+                        </EachTool>
+                    </ToolbarCopyOptions>
+                    {
+                        !isParent && <>
+                            <EachTool tooltip={"Text color"}>
+                                <CaseSensitive/>
+                            </EachTool>
+                            <EachTool tooltip={"Delete"} onClick={handleDelete}>
+                                <Trash/>
+                            </EachTool>
+                        </>
+                    }
                     <ToolBarAddOptions>
                         <EachTool tooltip={"Add"}>
                             <Plus/>
@@ -52,20 +81,20 @@ export default function DesignerToolBar() {
     );
 }
 
-const EachTool = ({children, tooltip}: {
+const EachTool = ({children, tooltip, onClick}: {
     children: React.ReactNode;
-    tooltip: string
+    tooltip: string;
+    onClick?: () => void;
 }) => {
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <div
-                    className={
-                        "border text-muted-foreground p-sm rounded-lg hover:bg-accent hover:text-foreground [&>svg]:size-4"
-                    }
+                <button
+                    className={"p-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground [&>svg]:size-4 text-xl"}
+                    onClick={onClick}
                 >
                     {children}
-                </div>
+                </button>
             </TooltipTrigger>
             <TooltipContent className={"mb-3"}>
                 <p>{tooltip}</p>

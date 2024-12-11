@@ -20,9 +20,9 @@ interface PreviewState {
     variables: MortarVariable[];
     activePage: MortarPage | null;
     activePageInstances: MortarElementInstance[];
+    activeComponents: MortarComponent[];
     mode: Mode;
-    activeElement: MortarElement | null;
-    elements: MortarElement[]
+    activeElements: MortarElement[];
 }
 
 interface PreviewContextProps {
@@ -57,11 +57,12 @@ export const PreviewProvider = ({children}: { children: ReactNode }) => {
         activePageInstances: [],
         styles: [],
         instances: [],
+        activeComponents: [],
         activePage: null,
-        activeElement: null,
-        elements: [],
+        activeElements: [],
         mode: 'system',
     });
+
 
     const setPreviewState = (newState: Partial<PreviewState>) => {
         console.log('SET PREVIEW STATE:', {newState})
@@ -105,11 +106,6 @@ export const PreviewProvider = ({children}: { children: ReactNode }) => {
         key: keyof PreviewState;
         data: Partial<T>
     }) => {
-        console.log('UPDATE ITEM IN ARRAY:', {
-            index: params.index,
-            key: params.key,
-            data: params.data
-        })
         const {index, key, data} = params;
         setState((prevState) => ({
             ...prevState,
@@ -138,17 +134,30 @@ export const PreviewProvider = ({children}: { children: ReactNode }) => {
         }));
     };
 
+
+
+    useEffect(() => {
+        if (state.pages.length > 0 && !state.activePage) {
+            const activePage = state.pages.find(page => page.route == "/");
+            if (activePage) {
+                setPreviewState({
+                    activePage
+                })
+            }
+        }
+    }, [state.pages])
+
     useEffect(() => {
         const debounceTimeout = setTimeout(() => {
             sendSync();
-        }, 5000);
+        }, 9000);
 
         return () => {
             clearTimeout(debounceTimeout);
         };
     }, [state.components, state.pages, state.variables, state.variableSets, state.styles, state.instances]);
 
-    // console.log('PREVIEW CONTEXT::::', state)
+    console.log('PREVIEW CONTEXT::::', state)
 
     return (
         <PreviewContext.Provider
@@ -158,7 +167,7 @@ export const PreviewProvider = ({children}: { children: ReactNode }) => {
                 updateItemInArray,
                 pushToArray,
                 removeFromArray,
-                sendSync
+                sendSync,
             }}
         >
             {children}
